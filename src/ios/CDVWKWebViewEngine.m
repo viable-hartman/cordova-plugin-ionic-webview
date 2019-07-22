@@ -769,7 +769,8 @@
             [scheme isEqualToString:@"mailto"] ||
             [scheme isEqualToString:@"facetime"] ||
             [scheme isEqualToString:@"sms"] ||
-            [scheme isEqualToString:@"maps"]) {
+            [scheme isEqualToString:@"maps"] ||
+            !navigationAction.targetFrame) {
             [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
             decisionHandler(WKNavigationActionPolicyCancel);
         } else {
