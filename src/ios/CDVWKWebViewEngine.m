@@ -692,18 +692,22 @@
     NSString* message = [NSString stringWithFormat:@"Failed to load webpage with error: %@", [error localizedDescription]];
     NSLog(@"%@", message);
 
-    NSURL* errorUrl = vc.errorURL;
-    if (errorUrl) {
-        NSCharacterSet *charSet = [NSCharacterSet URLFragmentAllowedCharacterSet];
-        errorUrl = [NSURL URLWithString:[NSString stringWithFormat:@"?error=%@", [message stringByAddingPercentEncodingWithAllowedCharacters:charSet]] relativeToURL:errorUrl];
-        NSLog(@"%@", [errorUrl absoluteString]);
-        [theWebView loadRequest:[NSURLRequest requestWithURL:errorUrl]];
-    }
+    // Ignore 999 domain error as things seem to load fine.
+    if( ! [ error.domain isEqualToString: NSURLErrorDomain ] || error.code != -999 ) {
+
+        NSURL* errorUrl = vc.errorURL;
+        if (errorUrl) {
+            NSCharacterSet *charSet = [NSCharacterSet URLFragmentAllowedCharacterSet];
+            errorUrl = [NSURL URLWithString:[NSString stringWithFormat:@"?error=%@", [message stringByAddingPercentEncodingWithAllowedCharacters:charSet]] relativeToURL:errorUrl];
+            NSLog(@"%@", [errorUrl absoluteString]);
+            [theWebView loadRequest:[NSURLRequest requestWithURL:errorUrl]];
+        }
 #ifdef DEBUG
-    UIAlertController *alertController = [UIAlertController alertControllerWithTitle:[[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleDisplayName"] message:message preferredStyle:UIAlertControllerStyleAlert];
-    [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"OK", nil) style:UIAlertActionStyleDefault handler:nil]];
-    [vc presentViewController:alertController animated:YES completion:nil];
+        UIAlertController *alertController = [UIAlertController alertControllerWithTitle:[[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleDisplayName"] message:message preferredStyle:UIAlertControllerStyleAlert];
+        [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"OK", nil) style:UIAlertActionStyleDefault handler:nil]];
+        [vc presentViewController:alertController animated:YES completion:nil];
 #endif
+    }
 }
 
 - (void)webViewWebContentProcessDidTerminate:(WKWebView *)webView
