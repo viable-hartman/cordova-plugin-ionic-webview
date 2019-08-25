@@ -111,8 +111,15 @@
 #pragma clang diagnostic ignored "-Wprotocol"
 
 @implementation CDVWKWebViewEngine
+static NSInteger _maxRetries = 3;
 
 @synthesize engineWebView = _engineWebView;
+
+NSTimer *timer;
+
++ (NSInteger)maxRetries {
+  return _maxRetries;
+}
 
 - (instancetype)initWithFrame:(CGRect)frame
 {
@@ -125,6 +132,7 @@
         [UIApplication.sharedApplication.keyWindow addSubview:self.engineWebView];
 
         self.frame = frame;
+        self.numRetries = 0;  // Init retry counter
     }
     return self;
 }
@@ -670,6 +678,7 @@
 
 - (void)webView:(WKWebView*)webView didFinishNavigation:(WKNavigation*)navigation
 {
+    self.numRetries = 0;  // Navigation suceeded, so reset counter.
     #ifndef __CORDOVA_6_0_0
         CDVViewController* vc = (CDVViewController*)self.viewController;
         [CDVUserAgentUtil releaseLock:vc.userAgentLockToken];
@@ -694,19 +703,25 @@
 
     // Ignore 999 domain error as things seem to load fine.
     if( ! [ error.domain isEqualToString: NSURLErrorDomain ] || error.code != -999 ) {
-
-        NSURL* errorUrl = vc.errorURL;
-        if (errorUrl) {
-            NSCharacterSet *charSet = [NSCharacterSet URLFragmentAllowedCharacterSet];
-            errorUrl = [NSURL URLWithString:[NSString stringWithFormat:@"?error=%@", [message stringByAddingPercentEncodingWithAllowedCharacters:charSet]] relativeToURL:errorUrl];
-            NSLog(@"%@", [errorUrl absoluteString]);
-            [theWebView loadRequest:[NSURLRequest requestWithURL:errorUrl]];
-        }
+        // Handle network failures by retrying **maxRetries** times before erroring.
+        NSURL* reqUrl = [NSURL URLWithString:[NSString stringWithString: error.userInfo[@"NSErrorFailingURLStringKey"]]];
+        if( self.numRetries < CDVWKWebViewEngine.maxRetries && reqUrl) {
+            self.numRetries++;  // Retrying so increment retries.
+            [theWebView loadRequest:[NSURLRequest requestWithURL:reqUrl]];
+        } else {
+            NSURL* errorUrl = vc.errorURL;
+            if (errorUrl) {
+                NSCharacterSet *charSet = [NSCharacterSet URLFragmentAllowedCharacterSet];
+                errorUrl = [NSURL URLWithString:[NSString stringWithFormat:@"?error=%@", [message stringByAddingPercentEncodingWithAllowedCharacters:charSet]] relativeToURL:errorUrl];
+                NSLog(@"%@", [errorUrl absoluteString]);
+                [theWebView loadRequest:[NSURLRequest requestWithURL:errorUrl]];
+            }
 #ifdef DEBUG
-        UIAlertController *alertController = [UIAlertController alertControllerWithTitle:[[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleDisplayName"] message:message preferredStyle:UIAlertControllerStyleAlert];
-        [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"OK", nil) style:UIAlertActionStyleDefault handler:nil]];
-        [vc presentViewController:alertController animated:YES completion:nil];
+            UIAlertController *alertController = [UIAlertController alertControllerWithTitle:[[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleDisplayName"] message:message preferredStyle:UIAlertControllerStyleAlert];
+            [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"OK", nil) style:UIAlertActionStyleDefault handler:nil]];
+            [vc presentViewController:alertController animated:YES completion:nil];
 #endif
+        }
     }
 }
 
