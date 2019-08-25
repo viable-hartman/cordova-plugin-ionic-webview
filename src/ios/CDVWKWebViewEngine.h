@@ -22,6 +22,8 @@
 
 @interface CDVWKWebViewEngine : CDVPlugin <CDVWebViewEngineProtocol, WKScriptMessageHandler, WKNavigationDelegate>
 
+@property (class, nonatomic, assign, readonly) NSInteger maxRetries;
+@property (nonatomic, assign) NSInteger numRetries;
 @property (nonatomic, strong, readonly) id <WKUIDelegate> uiDelegate;
 @property (nonatomic, strong) NSString * basePath;
 
