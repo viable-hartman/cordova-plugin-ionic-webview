@@ -704,7 +704,10 @@ NSTimer *timer;
     // Ignore 999 domain error as things seem to load fine.
     if( ! [ error.domain isEqualToString: NSURLErrorDomain ] || error.code != -999 ) {
         // Handle network failures by retrying **maxRetries** times before erroring.
-        NSURL* reqUrl = [NSURL URLWithString:[NSString stringWithString: error.userInfo[@"NSErrorFailingURLStringKey"]]];
+        NSURL* reqUrl = Nil;
+        if ([error.userInfo objectForKey:@"NSErrorFailingURLStringKey"]) {
+            reqUrl = [NSURL URLWithString:[NSString stringWithString: error.userInfo[@"NSErrorFailingURLStringKey"]]];
+        }
         if( self.numRetries < CDVWKWebViewEngine.maxRetries && reqUrl) {
             self.numRetries++;  // Retrying so increment retries.
             [theWebView loadRequest:[NSURLRequest requestWithURL:reqUrl]];
